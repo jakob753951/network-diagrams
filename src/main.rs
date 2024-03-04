@@ -1,5 +1,8 @@
+use std::collections::HashSet;
+use std::fmt::{Display, Formatter};
 use serde::{Deserialize, Serialize};
 use std::fs::File;
+use std::hash::Hash;
 use std::io::Read;
 
 mod graph;
@@ -19,7 +22,51 @@ struct NaiveTask {
     description: String,
     duration: i32,
 }
+impl<VId> Graph<VId, NaiveTask>
+where
+    VId: Eq + Hash + Clone
+{
+    fn early_start(&self, node: VId) -> i32 {
+        self.predecessor_edges.get(&node)
+            .unwrap_or(&HashSet::new())
+            .iter()
+            .map(|predecessor| self.early_finish(predecessor.clone()))
+            .max()
+            .unwrap_or(0)
+    }
 
+    fn early_finish(&self, node: VId) -> i32 {
+        (self.early_start(node.clone()) + self.vertices[&node].duration) as i32
+    }
+
+    fn late_start(&self, node: VId) -> i32 {
+        (self.late_finish(node.clone()) - self.vertices[&node].duration) as i32
+    }
+
+    fn late_finish(&self, node: VId) -> i32 {
+        self.successor_edges.get(&node)
+            .unwrap_or(&HashSet::new())
+            .iter()
+            .map(|successor| self.late_start(successor.clone()))
+            .min()
+            .unwrap_or(self.early_finish(node))
+    }
+
+    fn slack(&self, node: VId) -> i32 {
+        self.late_start(node.clone()) - self.early_start(node)
+    }
+}
+
+struct NodeData {
+    early_start: i32,
+    id: usize,
+    early_finish: i32,
+    slack: i32,
+    description: String,
+    late_start: i32,
+    duration: i32,
+    late_finish: i32,
+}
 // impl Task {
 //     fn early_start(&self) -> i32 {
 //         self.predecessors
@@ -49,31 +96,46 @@ struct NaiveTask {
 //         self.late_start() - self.early_start()
 //     }
 // }
-//
-// impl Display for Task {
-//     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-//         writeln!(f, "┌─────────┬─────────┬─────────┐")?;
-//         writeln!(
-//             f,
-//             "│ {:^7} │ {:^7} │ {:^7} │",
-//             self.early_start(),
-//             self.id,
-//             self.early_finish()
-//         )?;
-//         writeln!(f, "├─────────┼─────────┴─────────┤")?;
-//         writeln!(f, "│ {:^7} │ {:^17} │", self.slack(), self.description)?;
-//         writeln!(f, "├─────────┼─────────┬─────────┤")?;
-//         writeln!(
-//             f,
-//             "│ {:^7} │ {:^7} │ {:^7} │",
-//             self.late_start(),
-//             self.duration,
-//             self.late_finish()
-//         )?;
-//         write!(f, "└─────────┴─────────┴─────────┘")?;
-//         Ok(())
-//     }
-// }
+
+impl Display for NodeData {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "┌─────────┬─────────┬─────────┐")?;
+        writeln!(
+            f,
+            "│ {:^7} │ {:^7} │ {:^7} │",
+            self.early_start,
+            self.id,
+            self.early_finish
+        )?;
+        writeln!(f, "├─────────┼─────────┴─────────┤")?;
+        writeln!(f, "│ {:^7} │ {:^17} │", self.slack, self.description)?;
+        writeln!(f, "├─────────┼─────────┬─────────┤")?;
+        writeln!(
+            f,
+            "│ {:^7} │ {:^7} │ {:^7} │",
+            self.late_start,
+            self.duration,
+            self.late_finish
+        )?;
+        write!(f, "└─────────┴─────────┴─────────┘")?;
+        Ok(())
+    }
+}
+
+fn node_data(graph: &Graph<usize, NaiveTask>, id: usize) -> NodeData {
+    let node = graph.vertices[&id].clone();
+
+    NodeData {
+        early_start: graph.early_start(id.clone()),
+        id: node.id,
+        early_finish: graph.early_finish(id.clone()),
+        slack: graph.slack(id.clone()),
+        description: node.description,
+        late_start: graph.late_start(id.clone()),
+        duration: node.duration,
+        late_finish: graph.late_finish(id.clone()),
+    }
+}
 
 fn main() {
     let mut file = File::open("config.json").unwrap();
@@ -89,31 +151,6 @@ fn main() {
         graph.connect_vertices(*from, *to);
     });
 
-
-
-
-    // let mut site_selection = Task::new(1, "Site Selection", 3);
-    // let mut site_clearance = Task::new(2, "Site Clearance", 2);
-    // let mut excavation = Task::new(3, "Excavation", 5);
-    // let mut structural_framework = Task::new(4, "Structural Framework", 4);
-    // let mut trap_installation = Task::new(5, "Trap Installation", 4);
-    // let mut decorating = Task::new(6, "Decorating", 3);
-    // let mut security_enhancement = Task::new(7, "Security Enhancement", 3);
-    // let mut treasure_vault_construction = Task::new(8, "Treasure Vault Construction", 4);
-    // let mut final_inspection = Task::new(9, "Final Inspection", 2);
-    // let mut grand_opening = Task::new(10, "Grand Opening", 1);
-    //
-    // Task::connect(&mut site_selection, &mut site_clearance);
-    // Task::connect(&mut site_clearance, &mut excavation);
-    // Task::connect(&mut excavation, &mut structural_framework);
-    // Task::connect(&mut structural_framework, &mut trap_installation);
-    // Task::connect(&mut structural_framework, &mut decorating);
-    // Task::connect(&mut structural_framework, &mut treasure_vault_construction);
-    // Task::connect(&mut trap_installation, &mut security_enhancement);
-    // Task::connect(&mut security_enhancement, &mut final_inspection);
-    // Task::connect(&mut decorating, &mut final_inspection);
-    // Task::connect(&mut treasure_vault_construction, &mut final_inspection);
-    // Task::connect(&mut final_inspection, &mut grand_opening);
-
-    // println!("{decorating}");
+    let node_data = node_data(&graph, 6);
+    println!("{node_data}");
 }

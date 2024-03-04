@@ -3,9 +3,9 @@ use std::hash::Hash;
 
 #[derive(Debug)]
 pub struct Graph<VId, V = ()> {
-    vertices: HashMap<VId, V>,
-    successor_edges: HashMap<VId, HashSet<VId>>,
-    predecessor_edges: HashMap<VId, HashSet<VId>>,
+    pub(crate) vertices: HashMap<VId, V>,
+    pub(crate) successor_edges: HashMap<VId, HashSet<VId>>,
+    pub(crate) predecessor_edges: HashMap<VId, HashSet<VId>>,
 }
 
 impl<VId, V> Graph<VId, V>
