@@ -4,7 +4,8 @@ use std::hash::Hash;
 #[derive(Debug)]
 pub struct Graph<VId, V = ()> {
     vertices: HashMap<VId, V>,
-    edges: HashMap<VId, HashSet<VId>>,
+    successor_edges: HashMap<VId, HashSet<VId>>,
+    predecessor_edges: HashMap<VId, HashSet<VId>>,
 }
 
 impl<VId, V> Graph<VId, V>
@@ -15,7 +16,8 @@ where
     pub fn new() -> Self {
         Graph {
             vertices: HashMap::new(),
-            edges: HashMap::new(),
+            successor_edges: HashMap::new(),
+            predecessor_edges: HashMap::new(),
         }
     }
 
@@ -23,8 +25,11 @@ where
         self.vertices.insert(vertex, value);
     }
 
-    pub fn add_edge(&mut self, from: VId, to: VId) {
-        self.edges.entry(from).or_default().insert(to);
+    pub fn add_predecessor(&mut self, from: VId, to: VId) {
+        self.predecessor_edges.entry(from).or_default().insert(to);
+    }
+    pub fn add_successor(&mut self, from: VId, to: VId) {
+        self.successor_edges.entry(from).or_default().insert(to);
     }
 }
 
@@ -33,8 +38,8 @@ where
     VId: Eq + Hash + Clone,
     V: Hash,
 {
-    pub fn add_undirected_edge(&mut self, a: VId, b: VId) {
-        self.add_edge(a.clone(), b.clone());
-        self.add_edge(b, a);
+    pub fn connect_vertices(&mut self, from: VId, to: VId) {
+        self.add_successor(from.clone(), to.clone());
+        self.add_predecessor(to, from);
     }
 }

@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use std::fmt::{Display, Formatter};
 use std::fs::File;
 use std::io::Read;
 
@@ -87,7 +86,7 @@ fn main() {
     val.tasks.iter().for_each(|task| graph.add_vertex(task.id, task.clone()));
 
     val.connections.iter().for_each(|(from, to)| {
-        graph.add_edge(*from, *to);
+        graph.connect_vertices(*from, *to);
     });
 
 
