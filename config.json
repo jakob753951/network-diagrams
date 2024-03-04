@@ -1,0 +1,67 @@
+{
+	"tasks": [
+		{
+			"id": 1,
+			"description": "Site Selection",
+			"duration": 3
+		},
+		{
+			"id": 2,
+			"description": "Site Clearance",
+			"duration": 2
+		},
+		{
+			"id": 3,
+			"description": "Excavation",
+			"duration": 5
+		},
+		{
+			"id": 4,
+			"description": "Structural Framework",
+			"duration": 4
+		},
+		{
+			"id": 5,
+			"description": "Trap installation",
+			"duration": 4
+		},
+		{
+			"id": 6,
+			"description": "Decorating",
+			"duration": 3
+		},
+		{
+			"id": 7,
+			"description": "Security Enhancement",
+			"duration": 3
+		},
+		{
+			"id": 8,
+			"description": "Treasure Vault Construction",
+			"duration": 4
+		},
+		{
+			"id": 9,
+			"description": "Final Inspection",
+			"duration": 2
+		},
+		{
+			"id": 10,
+			"description": "Grand Opening",
+			"duration": 1
+		}
+	],
+	"connections": [
+		[1, 2],
+		[2, 3],
+		[3, 4],
+		[4, 5],
+		[4, 6],
+		[4, 8],
+		[5, 7],
+		[7, 9],
+		[6, 9],
+		[8, 9],
+		[9, 10]
+	]
+}
