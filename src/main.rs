@@ -69,73 +69,34 @@ struct NodeData {
     duration: i32,
     late_finish: i32,
 }
-// impl Task {
-//     fn early_start(&self) -> i32 {
-//         self.predecessors
-//             .iter()
-//             .map(|predecessor| predecessor.early_finish())
-//             .max()
-//             .unwrap_or(0)
-//     }
-//
-//     fn early_finish(&self) -> i32 {
-//         (self.early_start() + self.duration) as i32
-//     }
-//
-//     fn late_start(&self) -> i32 {
-//         (self.late_finish() - self.duration) as i32
-//     }
-//
-//     fn late_finish(&self) -> i32 {
-//         self.successors
-//             .iter()
-//             .map(|successor| successor.late_start())
-//             .min()
-//             .unwrap_or(self.early_finish())
-//     }
-//
-//     fn slack(&self) -> i32 {
-//         self.late_start() - self.early_start()
-//     }
-// }
 
-impl Display for NodeData {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "┌─────────┬─────────┬─────────┐")?;
-        writeln!(
-            f,
-            "│ {:^7} │ {:^7} │ {:^7} │",
-            self.early_start,
-            self.id,
-            self.early_finish
-        )?;
-        writeln!(f, "├─────────┼─────────┴─────────┤")?;
-        writeln!(f, "│ {:^7} │ {:^17} │", self.slack, self.description)?;
-        writeln!(f, "├─────────┼─────────┬─────────┤")?;
-        writeln!(
-            f,
-            "│ {:^7} │ {:^7} │ {:^7} │",
-            self.late_start,
-            self.duration,
-            self.late_finish
-        )?;
-        write!(f, "└─────────┴─────────┴─────────┘")?;
-        Ok(())
+impl NodeData {
+    fn new_from_graph_node(graph: &Graph<usize, NaiveTask>, id: usize) -> NodeData {
+        let node = &graph.vertices[&id];
+
+        NodeData {
+            early_start: graph.early_start(id),
+            id: node.id,
+            early_finish: graph.early_finish(id),
+            slack: graph.slack(id),
+            description: node.description.clone(),
+            late_start: graph.late_start(id),
+            duration: node.duration,
+            late_finish: graph.late_finish(id),
+        }
     }
 }
 
-fn node_data(graph: &Graph<usize, NaiveTask>, id: usize) -> NodeData {
-    let node = graph.vertices[&id].clone();
-
-    NodeData {
-        early_start: graph.early_start(id.clone()),
-        id: node.id,
-        early_finish: graph.early_finish(id.clone()),
-        slack: graph.slack(id.clone()),
-        description: node.description,
-        late_start: graph.late_start(id.clone()),
-        duration: node.duration,
-        late_finish: graph.late_finish(id.clone()),
+impl Display for NodeData {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "┌{0:─>10}{0:─>15}{1:─>15}", "┬", "┐")?;
+        writeln!(f, "│ ES: {:^3} │ Id: {:<8} │ EF: {:<8} │", self.early_start, self.id, self.early_finish)?;
+        writeln!(f, "├{0:─>10}{1:─>15}{2:─>15}", "┼", "┴", "┤")?;
+        writeln!(f, "│ SL: {:^3} │ {:^17} │", self.slack, self.description)?;
+        writeln!(f, "├{0:─>10}{1:─>15}{2:─>15}", "┼", "┬", "┤")?;
+        writeln!(f, "│ LS: {:^3} │ Dur: {:<7} │ LF: {:<8} │", self.late_start, self.duration, self.late_finish)?;
+        writeln!(f, "└{0:─>10}{0:─>15}{1:─>15}", "┴", "┘")?;
+        Ok(())
     }
 }
 
@@ -151,6 +112,6 @@ fn main() {
 
     val.connections.iter().for_each(|(from, to)| graph.connect_vertices(*from, *to));
 
-    let node_data = node_data(&graph, 6);
+    let node_data = NodeData::new_from_graph_node(&graph, 8);
     println!("{node_data}");
 }
