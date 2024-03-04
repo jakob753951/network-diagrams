@@ -9,9 +9,9 @@ pub struct Graph<VId, V = ()> {
 }
 
 impl<VId, V> Graph<VId, V>
-where
-    VId: Eq + Hash,
-    V: Hash,
+    where
+        VId: Eq + Hash,
+        V: Hash,
 {
     pub fn new() -> Self {
         Graph {
@@ -34,9 +34,9 @@ where
 }
 
 impl<VId, V> Graph<VId, V>
-where
-    VId: Eq + Hash + Clone,
-    V: Hash,
+    where
+        VId: Eq + Hash + Clone,
+        V: Hash,
 {
     pub fn connect_vertices(&mut self, from: VId, to: VId) {
         self.add_successor(from.clone(), to.clone());

@@ -6,6 +6,7 @@ use std::hash::Hash;
 use std::io::Read;
 
 mod graph;
+
 use graph::Graph;
 
 #[derive(Serialize, Deserialize)]
@@ -22,9 +23,10 @@ struct NaiveTask {
     description: String,
     duration: i32,
 }
+
 impl<VId> Graph<VId, NaiveTask>
-where
-    VId: Eq + Hash + Clone
+    where
+        VId: Eq + Hash + Clone
 {
     fn early_start(&self, node: VId) -> i32 {
         self.predecessor_edges.get(&node)
@@ -147,9 +149,7 @@ fn main() {
 
     val.tasks.iter().for_each(|task| graph.add_vertex(task.id, task.clone()));
 
-    val.connections.iter().for_each(|(from, to)| {
-        graph.connect_vertices(*from, *to);
-    });
+    val.connections.iter().for_each(|(from, to)| graph.connect_vertices(*from, *to));
 
     let node_data = node_data(&graph, 6);
     println!("{node_data}");
