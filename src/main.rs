@@ -28,34 +28,78 @@ impl<VId> Graph<VId, Task>
     where
         VId: Eq + Hash + Clone
 {
-    fn early_start(&self, node: VId) -> i32 {
+    fn early_start(&self, node: &VId) -> i32 {
         self.predecessor_edges.get(&node)
             .unwrap_or(&HashSet::new())
             .iter()
-            .map(|predecessor| self.early_finish(predecessor.clone()))
+            .map(|predecessor| self.early_finish(&predecessor))
             .max()
             .unwrap_or(0)
     }
 
-    fn early_finish(&self, node: VId) -> i32 {
-        (self.early_start(node.clone()) + self.vertices[&node].duration) as i32
+    fn early_finish(&self, node: &VId) -> i32 {
+        (self.early_start(&node) + self.vertices[&node].duration) as i32
     }
 
-    fn late_start(&self, node: VId) -> i32 {
-        (self.late_finish(node.clone()) - self.vertices[&node].duration) as i32
+    fn late_start(&self, node: &VId) -> i32 {
+        (self.late_finish(&node) - self.vertices[&node].duration) as i32
     }
 
-    fn late_finish(&self, node: VId) -> i32 {
+    fn late_finish(&self, node: &VId) -> i32 {
         self.successor_edges.get(&node)
             .unwrap_or(&HashSet::new())
             .iter()
-            .map(|successor| self.late_start(successor.clone()))
+            .map(|successor| self.late_start(&successor))
             .min()
             .unwrap_or(self.early_finish(node))
     }
 
-    fn slack(&self, node: VId) -> i32 {
-        self.late_start(node.clone()) - self.early_start(node)
+    fn slack(&self, node: &VId) -> i32 {
+        self.late_start(&node) - self.early_start(node)
+    }
+}
+
+impl<VId> Display for Graph<VId, Task>
+    where
+        VId: Eq + Hash + Clone + Display
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "strict digraph network_diagram {{")?;
+        writeln!(f, "   node [shape=plaintext]")?;
+
+        self.vertices.iter().try_for_each(|(id, node)| {
+            writeln!(f, r#"    node_{id} [label=<
+                    <table border="0" cellborder="1" cellspacing="0">
+                        <tr height="30px"><td width="40px">{early_start}</td><td>{id}</td><td>{early_finish}</td></tr>
+                        <tr height="30px"><td width="40px">{slack}</td><td colspan="2">{description}</td></tr>
+                        <tr height="30px"><td width="40px">{late_start}</td><td>{duration}</td><td>{late_finish}</td></tr>
+                    </table>
+                >];"#,
+                early_start = self.early_start(&id),
+                id = id,
+                early_finish = self.early_finish(&id),
+                slack = self.slack(&id),
+                description = node.description,
+                late_start = self.late_start(&id),
+                duration = node.duration,
+                late_finish = self.late_finish(&id),
+            )
+        })?;
+
+        writeln!(f)?;
+
+        self.successor_edges.iter().try_for_each(|(from, successors)| {
+            successors.iter().try_for_each(|to| {
+                if self.slack(from) == 0 && self.slack(to) == 0 {
+                    writeln!(f, r#"   node_{from} -> node_{to} [color="red" penwidth="2"]"#, from = from, to = to)
+                } else {
+                    writeln!(f, "   node_{from} -> node_{to}", from = from, to = to)
+                }
+            })
+        })?;
+
+        writeln!(f, "}}")?;
+        Ok(())
     }
 }
 
@@ -75,14 +119,14 @@ impl NodeData {
         let node = &graph.vertices[&id];
 
         NodeData {
-            early_start: graph.early_start(id),
+            early_start: graph.early_start(&id),
             id: node.id,
-            early_finish: graph.early_finish(id),
-            slack: graph.slack(id),
+            early_finish: graph.early_finish(&id),
+            slack: graph.slack(&id),
             description: node.description.clone(),
-            late_start: graph.late_start(id),
+            late_start: graph.late_start(&id),
             duration: node.duration,
-            late_finish: graph.late_finish(id),
+            late_finish: graph.late_finish(&id),
         }
     }
 }
@@ -112,6 +156,6 @@ fn main() {
 
     val.connections.iter().for_each(|(from, to)| graph.connect_vertices(*from, *to));
 
-    let node_data = NodeData::new_from_graph_node(&graph, 8);
-    println!("{node_data}");
+    // let node_data = NodeData::new_from_graph_node(&graph, 8);
+    println!("{graph}");
 }
