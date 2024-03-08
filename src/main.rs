@@ -1,9 +1,14 @@
 use std::collections::HashSet;
 use std::fmt::{Display, Formatter};
+use std::fs;
 use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::hash::Hash;
-use std::io::Read;
+use std::io::{Read, Write};
+use graphviz_rust::cmd::Format;
+
+use graphviz_rust::{exec, parse};
+use graphviz_rust::printer::PrinterContext;
 
 mod graph;
 
@@ -38,11 +43,11 @@ impl<VId> Graph<VId, Task>
     }
 
     fn early_finish(&self, node: &VId) -> i32 {
-        (self.early_start(&node) + self.vertices[&node].duration) as i32
+        self.early_start(&node) + self.vertices[&node].duration
     }
 
     fn late_start(&self, node: &VId) -> i32 {
-        (self.late_finish(&node) - self.vertices[&node].duration) as i32
+        self.late_finish(&node) - self.vertices[&node].duration
     }
 
     fn late_finish(&self, node: &VId) -> i32 {
@@ -92,6 +97,7 @@ impl Display for Graph<String, Task>
         self.successor_edges.iter().try_for_each(|(from, successors)| {
             successors.iter().try_for_each(|to| {
                 if self.slack(from) == 0 && self.slack(to) == 0 {
+
                     writeln!(f, r#"   node_{from} -> node_{to} [color="red" penwidth="2"]"#, from = from.replace(".", "_"), to = to.replace(".", "_"))
                 } else {
                     writeln!(f, "   node_{from} -> node_{to}", from = from.replace(".", "_"), to = to.replace(".", "_"))
@@ -116,5 +122,24 @@ fn main() {
 
     val.connections.iter().for_each(|(from, to)| graph.connect_vertices(from.clone(), to.clone()));
 
-    println!("{graph}");
+    let graph_string = format!("{graph}");
+    let Ok(dot_graph) = parse(graph_string.as_str()) else {
+        println!("Something went wrong when parsing your graph. Exiting program...");
+        return;
+    };
+    let graph_png = exec(
+        dot_graph,
+        &mut PrinterContext::default(),
+        vec![Format::Png.into()],
+    ).expect("Couldn't make png");
+
+    let mut file = fs::OpenOptions::new()
+        .create(true) // To create a new file
+        .write(true)
+        // either use the ? operator or unwrap since it returns a Result
+        .open("graph.png").expect("Couldn't open graph.png");
+
+    file.write_all(&graph_png).expect("Writing to file failed");
+
+    println!("graph.png has been created.");
 }
