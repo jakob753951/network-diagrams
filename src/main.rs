@@ -65,8 +65,6 @@ impl<VId> Graph<VId, Task>
 }
 
 impl Display for Graph<String, Task>
-    // where
-    //     VId: Eq + Hash + Clone + Display
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "strict digraph network_diagram {{")?;
@@ -111,10 +109,10 @@ impl Display for Graph<String, Task>
 }
 
 fn main() {
-    let mut file = File::open("config.json").unwrap();
+    let mut file = File::open("config.json").expect("couldn't open config.json");
     let mut contents = String::new();
-    file.read_to_string(&mut contents).unwrap();
-    let val: Config = serde_json::from_str(contents.as_str()).unwrap();
+    file.read_to_string(&mut contents).expect("couldn't read config.json");
+    let val: Config = serde_json::from_str(contents.as_str()).expect("couldn't parse the contents of config.json");
 
     let mut graph: Graph<String, Task> = Graph::new();
 
