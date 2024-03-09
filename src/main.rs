@@ -95,7 +95,6 @@ impl Display for Graph<String, Task>
         self.successor_edges.iter().try_for_each(|(from, successors)| {
             successors.iter().try_for_each(|to| {
                 if self.slack(from) == 0 && self.slack(to) == 0 {
-
                     writeln!(f, r#"   node_{from} -> node_{to} [color="red" penwidth="2"]"#, from = from.replace(".", "_"), to = to.replace(".", "_"))
                 } else {
                     writeln!(f, "   node_{from} -> node_{to}", from = from.replace(".", "_"), to = to.replace(".", "_"))
@@ -121,10 +120,7 @@ fn main() {
     val.connections.iter().for_each(|(from, to)| graph.connect_vertices(from.clone(), to.clone()));
 
     let graph_string = format!("{graph}");
-    let Ok(dot_graph) = parse(graph_string.as_str()) else {
-        println!("Something went wrong when parsing your graph. Exiting program...");
-        return;
-    };
+    let dot_graph = parse(graph_string.as_str()).expect("Couldn't parse generated graph");
     let graph_png = exec(
         dot_graph,
         &mut PrinterContext::default(),
