@@ -71,8 +71,7 @@ fn main() {
 
     val.connections.iter().for_each(|(from, to)| graph.connect_vertices(from.clone(), to.clone()));
 
-    let graph_string = format!("{graph}");
-    let dot_graph = parse(graph_string.as_str()).expect("Couldn't parse generated graph");
+    let dot_graph = parse(graph.to_string().as_str()).expect("Couldn't parse generated graph");
     let graph_data = exec(
         dot_graph,
         &mut PrinterContext::default(),
