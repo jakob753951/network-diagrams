@@ -1,18 +1,18 @@
+use std::fmt::{Display, Formatter};
 use std::fs;
-use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::{Read, Write};
+
 use clap::{Parser, ValueEnum};
 use graphviz_rust::cmd::Format;
-
-use graphviz_rust::{exec, parse};
-use graphviz_rust::printer::PrinterContext;
-
-mod graph;
-mod task;
+use graphviz_rust::exec_dot;
+use serde::{Deserialize, Serialize};
 
 use graph::Graph;
 use task::Task;
+
+mod graph;
+mod task;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -30,6 +30,16 @@ enum OutputFormat {
     Png,
     Svg,
     Dot,
+}
+
+impl Display for OutputFormat {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            OutputFormat::Png => write!(f, "png"),
+            OutputFormat::Svg => write!(f, "svg"),
+            OutputFormat::Dot => write!(f, "dot"),
+        }
+    }
 }
 
 impl Into<Format> for OutputFormat {
@@ -71,15 +81,14 @@ fn main() {
 
     val.connections.iter().for_each(|(from, to)| graph.connect_vertices(from.clone(), to.clone()));
 
-    let dot_graph = parse(graph.to_string().as_str()).expect("Couldn't parse generated graph");
-    let graph_data = exec(
-        dot_graph,
-        &mut PrinterContext::default(),
+    let format: Format = cli.output_format.clone().into();
+    let graph_data = exec_dot(
+        graph.to_string(),
         // I'm sorry. We have to go from OutputFormat to Format to CommandArg. We're basically just doing output_format.into().into()
-        vec![<OutputFormat as Into<Format>>::into(cli.output_format.clone()).into()],
-    ).expect("Couldn't generate output graph");
+        vec![format.into()],
+    ).expect("Couldn't generate graph");
 
-    let output_file_name = format!("{}.{}", cli.output_path, <OutputFormat as Into<String>>::into(cli.output_format));
+    let output_file_name = format!("{}.{}", cli.output_path, cli.output_format);
 
     let mut file = fs::OpenOptions::new()
         .create(true) // To create a new file
