@@ -1,18 +1,56 @@
-use std::collections::HashSet;
-use std::fmt::{Display, Formatter};
 use std::fs;
 use serde::{Deserialize, Serialize};
 use std::fs::File;
-use std::hash::Hash;
 use std::io::{Read, Write};
+use clap::{Parser, ValueEnum};
 use graphviz_rust::cmd::Format;
 
 use graphviz_rust::{exec, parse};
 use graphviz_rust::printer::PrinterContext;
 
 mod graph;
+mod task;
 
 use graph::Graph;
+use task::Task;
+
+#[derive(Parser)]
+#[command(version, about, long_about = None)]
+struct Cli {
+    #[arg(value_name = "FILE")]
+    config_file_path: String,
+    #[arg(short, long, default_value = "graph")]
+    output_path: String,
+    #[arg(short = 'f', long = "format", value_enum, value_name = "FORMAT", default_value_t = OutputFormat::Png)]
+    output_format: OutputFormat,
+}
+
+#[derive(Copy, Clone, ValueEnum)]
+enum OutputFormat {
+    Png,
+    Svg,
+    Dot,
+}
+
+impl Into<Format> for OutputFormat {
+    fn into(self) -> Format {
+        match self {
+            OutputFormat::Png => Format::Png,
+            OutputFormat::Svg => Format::Svg,
+            OutputFormat::Dot => Format::Dot,
+        }
+    }
+}
+
+impl Into<String> for OutputFormat {
+    fn into(self) -> String {
+        match self {
+            OutputFormat::Png => "png".to_string(),
+            OutputFormat::Svg => "svg".to_string(),
+            OutputFormat::Dot => "dot".to_string(),
+        }
+    }
+}
 
 #[derive(Serialize, Deserialize)]
 struct Config {
@@ -20,98 +58,12 @@ struct Config {
     connections: Vec<(String, String)>,
 }
 
-#[derive(Serialize, Deserialize)]
-#[derive(Hash)]
-#[derive(Clone)]
-struct Task {
-    id: String,
-    description: String,
-    duration: i32,
-}
-
-impl<VId> Graph<VId, Task>
-    where
-        VId: Eq + Hash + Clone
-{
-    fn early_start(&self, node: &VId) -> i32 {
-        self.predecessor_edges.get(&node)
-            .unwrap_or(&HashSet::new())
-            .iter()
-            .map(|predecessor| self.early_finish(&predecessor))
-            .max()
-            .unwrap_or(0)
-    }
-
-    fn early_finish(&self, node: &VId) -> i32 {
-        self.early_start(&node) + self.vertices[&node].duration
-    }
-
-    fn late_start(&self, node: &VId) -> i32 {
-        self.late_finish(&node) - self.vertices[&node].duration
-    }
-
-    fn late_finish(&self, node: &VId) -> i32 {
-        self.successor_edges.get(&node)
-            .unwrap_or(&HashSet::new())
-            .iter()
-            .map(|successor| self.late_start(&successor))
-            .min()
-            .unwrap_or(self.early_finish(node))
-    }
-
-    fn slack(&self, node: &VId) -> i32 {
-        self.late_start(&node) - self.early_start(node)
-    }
-}
-
-impl Display for Graph<String, Task>
-{
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "strict digraph network_diagram {{")?;
-        writeln!(f, "   node [shape=plaintext]")?;
-
-        self.vertices.iter().try_for_each(|(id, node)| {
-            writeln!(f, r#"    node_{replaced_id} [label=<
-                    <table border="0" cellborder="1" cellspacing="0">
-                        <tr height="30px"><td width="40px">{early_start}</td><td>{id}</td><td>{early_finish}</td></tr>
-                        <tr height="30px"><td width="40px">{slack}</td><td colspan="2">{description}</td></tr>
-                        <tr height="30px"><td width="40px">{late_start}</td><td>{duration}</td><td>{late_finish}</td></tr>
-                    </table>
-                >];"#,
-                replaced_id = id.replace(".", "_"),
-                early_start = self.early_start(&id),
-                id = id,
-                early_finish = self.early_finish(&id),
-                slack = self.slack(&id),
-                description = node.description,
-                late_start = self.late_start(&id),
-                duration = node.duration,
-                late_finish = self.late_finish(&id),
-            )
-        })?;
-
-        writeln!(f)?;
-
-        self.successor_edges.iter().try_for_each(|(from, successors)| {
-            successors.iter().try_for_each(|to| {
-                if self.slack(from) == 0 && self.slack(to) == 0 {
-                    writeln!(f, r#"   node_{from} -> node_{to} [color="red" penwidth="2"]"#, from = from.replace(".", "_"), to = to.replace(".", "_"))
-                } else {
-                    writeln!(f, "   node_{from} -> node_{to}", from = from.replace(".", "_"), to = to.replace(".", "_"))
-                }
-            })
-        })?;
-
-        writeln!(f, "}}")?;
-        Ok(())
-    }
-}
-
 fn main() {
-    let mut file = File::open("config.json").expect("couldn't open config.json");
+    let cli = Cli::parse();
+    let mut file = File::open(cli.config_file_path).expect("couldn't open the input file");
     let mut contents = String::new();
-    file.read_to_string(&mut contents).expect("couldn't read config.json");
-    let val: Config = serde_json::from_str(contents.as_str()).expect("couldn't parse the contents of config.json");
+    file.read_to_string(&mut contents).expect("couldn't read the input file");
+    let val: Config = serde_json::from_str(contents.as_str()).expect("couldn't parse the contents of the input file");
 
     let mut graph: Graph<String, Task> = Graph::new();
 
@@ -121,19 +73,21 @@ fn main() {
 
     let graph_string = format!("{graph}");
     let dot_graph = parse(graph_string.as_str()).expect("Couldn't parse generated graph");
-    let graph_png = exec(
+    let graph_data = exec(
         dot_graph,
         &mut PrinterContext::default(),
-        vec![Format::Png.into()],
-    ).expect("Couldn't make png");
+        // I'm sorry. We have to go from OutputFormat to Format to CommandArg. We're basically just doing output_format.into().into()
+        vec![<OutputFormat as Into<Format>>::into(cli.output_format.clone()).into()],
+    ).expect("Couldn't generate output graph");
+
+    let output_file_name = format!("{}.{}", cli.output_path, <OutputFormat as Into<String>>::into(cli.output_format));
 
     let mut file = fs::OpenOptions::new()
         .create(true) // To create a new file
         .write(true)
-        // either use the ? operator or unwrap since it returns a Result
-        .open("graph.png").expect("Couldn't open graph.png");
+        .open(output_file_name.clone()).expect("Couldn't create/open output file");
 
-    file.write_all(&graph_png).expect("Writing to file failed");
+    file.write_all(&graph_data).expect("Writing to file failed");
 
-    println!("graph.png has been created.");
+    println!("{} has been created.", output_file_name);
 }
