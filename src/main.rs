@@ -43,14 +43,13 @@ fn main() -> Result<()> {
         vec![format.into()],
     ).expect("Couldn't generate graph");
 
-    let output_file_name = format!("{}.{}", cli.output_path, cli.output_format);
-
+    let output_file_name = get_output_file_name(&cli);
     let mut file = fs::OpenOptions::new()
         .create(true) // To create a new file
         .write(true)
-        .open(output_file_name.clone()).expect("Couldn't create/open output file");
+        .open(output_file_name).expect("Couldn't create/open output file");
 
-    file.write_all(&graph_data).expect("Writing to file failed");
+    file.write_all(&graph_data).expect("Couldn't write to file");
 
     println!("{} has been created.", output_file_name);
 
@@ -58,9 +57,13 @@ fn main() -> Result<()> {
 }
 
 fn read_config(path: String) -> Result<Config> {
-    let mut file = File::open(path).expect("couldn't open the input file");
+    let mut file = File::open(path).expect("Couldn't open the input file");
     let mut contents = String::new();
-    file.read_to_string(&mut contents).expect("couldn't read the input file");
-    let config: Config = serde_json::from_str(contents.as_str()).expect("couldn't parse the contents of the input file");
+    file.read_to_string(&mut contents).expect("Couldn't read the input file");
+    let config: Config = serde_json::from_str(contents.as_str()).expect("Couldn't parse the contents of the input file");
     Ok(config)
+}
+
+fn get_output_file_name(cli: &Cli) -> String {
+    format!("{}.{}", cli.output_path, cli.output_format)
 }
