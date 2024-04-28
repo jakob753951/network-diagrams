@@ -39,7 +39,6 @@ fn main() -> Result<()> {
     let format: Format = cli.output_format.into();
     let graph_data = exec_dot(
         graph.to_string(),
-        // I'm sorry. We have to go from OutputFormat to Format to CommandArg. We're basically just doing output_format.into().into()
         vec![format.into()],
     ).expect("Couldn't generate graph");
 
