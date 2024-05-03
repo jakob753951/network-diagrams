@@ -7,7 +7,7 @@ use graphviz_rust::cmd::Format;
 pub(crate) struct Cli {
     #[arg(value_name = "FILE")]
     pub(crate) config_file_path: String,
-    #[arg(short, long, default_value = "graph")]
+    #[arg(short, long, default_value = "graph.png")]
     pub(crate) output_path: String,
     #[arg(short = 'f', long = "format", value_enum, value_name = "FORMAT", default_value_t = OutputFormat::Png)]
     pub(crate) output_format: OutputFormat,
