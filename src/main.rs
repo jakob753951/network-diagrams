@@ -42,7 +42,7 @@ fn main() -> Result<()> {
         vec![format.into()],
     ).expect("Couldn't generate graph");
 
-    let output_file_name = get_output_file_name(&cli);
+    let output_file_name = cli.output_path;
     let mut file = fs::OpenOptions::new()
         .create(true) // To create a new file
         .write(true)
@@ -61,8 +61,4 @@ fn read_config(path: String) -> Result<Config> {
     file.read_to_string(&mut contents).expect("Couldn't read the input file");
     let config: Config = serde_json::from_str(contents.as_str()).expect("Couldn't parse the contents of the input file");
     Ok(config)
-}
-
-fn get_output_file_name(cli: &Cli) -> String {
-    format!("{}.{}", cli.output_path, cli.output_format)
 }
