@@ -40,7 +40,7 @@ fn main() -> Result<()> {
     let graph_data = exec_dot(
         graph.to_string(),
         vec![format.into()],
-    ).expect("Couldn't generate graph");
+    ).expect("Couldn't generate graph.\nPlease be mindful of special characters in IDs");
 
     let output_file_name = cli.output_path;
     let mut file = fs::OpenOptions::new()
