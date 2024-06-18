@@ -11,6 +11,7 @@ pub(crate) struct Task {
     pub(crate) id: String,
     pub(crate) description: String,
     pub(crate) duration: i32,
+    pub(crate) predecessors: Vec<String>,
 }
 
 impl<VId> crate::graph::Graph<VId, Task>
