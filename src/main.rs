@@ -6,7 +6,6 @@ use std::io::{Read, Write};
 use clap::Parser;
 use graphviz_rust::cmd::Format;
 use graphviz_rust::exec_dot;
-use serde::{Deserialize, Serialize};
 use color_eyre::Result;
 
 use graph::Graph;
@@ -17,24 +16,23 @@ mod graph;
 mod task;
 mod cli;
 
-
-#[derive(Serialize, Deserialize)]
-struct Config {
-    tasks: Vec<Task>,
-    connections: Vec<(String, String)>,
-}
-
 fn main() -> Result<()> {
     color_eyre::install()?;
 
     let cli = Cli::parse();
-    let config = read_config(cli.config_file_path.clone())?;
+    let tasks = read_config(cli.config_file_path.clone())?;
 
     let mut graph: Graph<String, Task> = Graph::new();
 
-    config.tasks.iter().for_each(|task| graph.add_vertex(task.id.clone(), task.clone()));
+    tasks.iter().for_each(|task| graph.add_vertex(task.id.clone(), task.clone()));
 
-    config.connections.iter().for_each(|(from, to)| graph.connect_vertices(from.clone(), to.clone()));
+    tasks.iter()
+        .for_each(|task| 
+              task.predecessors.iter()
+                  .for_each(|predecessor|
+                      graph.connect_vertices(predecessor.clone(), task.clone().id)
+                  )
+        );
 
     let format: Format = cli.output_format.into();
     let graph_data = exec_dot(
@@ -55,10 +53,10 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn read_config(path: String) -> Result<Config> {
+fn read_config(path: String) -> Result<Vec<Task>> {
     let mut file = File::open(path).expect("Couldn't open the input file");
     let mut contents = String::new();
     file.read_to_string(&mut contents).expect("Couldn't read the input file");
-    let config: Config = serde_json::from_str(contents.as_str()).expect("Couldn't parse the contents of the input file");
-    Ok(config)
+    let tasks: Vec<Task> = serde_json::from_str(contents.as_str()).expect("Couldn't parse the contents of the input file");
+    Ok(tasks)
 }
