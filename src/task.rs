@@ -52,7 +52,8 @@ impl Display for crate::graph::Graph<String, Task>
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "strict digraph network_diagram {{")?;
-        writeln!(f, "   node [shape=plaintext]")?;
+        writeln!(f, "    bgcolor=transparent")?;
+        writeln!(f, "    node [shape=plaintext bgcolor=white]")?;
 
         self.vertices.iter().try_for_each(|(id, node)| {
             writeln!(f, r#"    node_{replaced_id} [label=<
